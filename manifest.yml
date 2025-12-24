@@ -1,0 +1,27 @@
+modules:
+  jira:issuePanel:
+    - key: jira-readiness-checker-hello-world-issue-panel
+      resource: main
+      resolver:
+        function: resolver
+      render: native
+      title: Readiness Checker
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: src/frontend/index.jsx
+app:
+  runtime:
+    name: nodejs24.x
+  id: ari:cloud:ecosystem::app/9bda2c65-3b9b-4e90-9285-1fa1ee9e2f24
+
+permissions:
+  scopes:
+    - read:jira-user
+    - read:jira-work
+    - write:jira-work
+    - storage:app
+    - read:me
