@@ -1,39 +1,48 @@
-# Forge Hello World
+# ✅ Smart Issue Readiness Checker (Jira Forge)
 
-This project contains a Forge app written in Javascript that displays `Hello World!` in a Jira issue panel. 
+**Smart Issue Readiness Checker** — это плагин для Jira Cloud, разработанный на платформе Atlassian Forge. Он помогает командам соблюдать стандарты качества задач (Definition of Ready), автоматически проверяя заполненность полей перед началом работы.
 
-See [developer.atlassian.com/platform/forge/](https://developer.atlassian.com/platform/forge) for documentation and tutorials explaining Forge.
+## 🚀 Основные возможности
 
-## Requirements
+*   **📊 Scoring System:** Визуальная оценка готовности задачи (0-100%).
+*   **🚦 Умные статусы:**
+    *   🔴 **CRITICAL:** Блокирующие ошибки (например, нет Исполнителя).
+    *   🟡 **WARNING:** Рекомендации (например, нет меток).
+    *   🟢 **READY:** Задача полностью готова.
+*   **⚡ Quick Actions:** Исправление ошибок в один клик (функция "Взять задачу на себя" прямо из интерфейса).
+*   **⚙️ Гибкие настройки:** Возможность включать/выключать правила через UI (настройки сохраняются в базе данных).
+*   **💾 Secure Storage:** Использование Forge Storage API для хранения конфигурации.
 
-See [Set up Forge](https://developer.atlassian.com/platform/forge/set-up-forge/) for instructions to get set up.
+## 🛠 Технический стек
 
-## Quick start
+*   **Platform:** Atlassian Forge (FaaS - Function as a Service)
+*   **Frontend:** React, Atlassian UI Kit (Hooks, Dynamic Tables, Modals)
+*   **Backend:** Forge Resolvers
+*   **Permissions:** OAuth 2.0 scopes (`read:jira-work`, `write:jira-work`, `storage:app`)
 
-- Modify your app frontend by editing the `src/frontend/index.jsx` file.
+## 📸 Скриншоты
 
-- Modify your app backend by editing the `src/resolvers/index.js` file to define resolver functions. See [Forge resolvers](https://developer.atlassian.com/platform/forge/runtime-reference/custom-ui-resolver/) for documentation on resolver functions.
+*(Сюда можно вставить скриншоты, см. инструкцию ниже)*
 
-- Build and deploy your app by running:
-```
-forge deploy
-```
+## 📦 Установка и запуск
 
-- Install your app in an Atlassian site by running:
-```
-forge install
-```
+Для запуска проекта локально:
 
-- Develop your app by running `forge tunnel` to proxy invocations locally:
-```
-forge tunnel
-```
+1.  Установите [Forge CLI](https://developer.atlassian.com/platform/forge/getting-started/).
+2.  Клонируйте репозиторий:
+    ```bash
+    git clone https://github.com/ваш-ник/jira-readiness-checker.git
+    ```
+3.  Установите зависимости:
+    ```bash
+    npm install
+    ```
+4.  Разверните приложение:
+    ```bash
+    forge deploy
+    forge install
+    forge tunnel
+    ```
 
-### Notes
-- Use the `forge deploy` command when you want to persist code changes.
-- Use the `forge install` command when you want to install the app on a new site.
-- Once the app is installed on a site, the site picks up the new app changes you deploy without needing to rerun the install command.
-
-## Support
-
-See [Get help](https://developer.atlassian.com/platform/forge/get-help/) for how to get help and provide feedback.
+---
+*Разработано в рамках изучения экосистемы Atlassian Forge.*
