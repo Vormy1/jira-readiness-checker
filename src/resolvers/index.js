@@ -16,9 +16,9 @@ const DEFAULT_SETTINGS = {
 
 // Функция 1: Получить настройки
 resolver.define('getSettings', async () => {
-  // Пытаемся достать из базы
+  // Достать из базы
   const stored = await storage.get(SETTINGS_KEY);
-  // Если в базе пусто, возвращаем дефолтные
+  // Если в базе нет то дефолтные
   return stored || DEFAULT_SETTINGS;
 });
 
