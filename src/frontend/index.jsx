@@ -15,7 +15,7 @@ const App = () => {
   // Состояния UI
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempSettings, setTempSettings] = useState(null);
-  const [isAssigning, setIsAssigning] = useState(false); // Чтобы кнопка не нажималась дважды
+  const [isAssigning, setIsAssigning] = useState(false); 
 
   // --- ЛОГИКА ---
 
@@ -38,7 +38,7 @@ const App = () => {
     const issueData = await response.json();
     const fields = issueData.fields;
 
-    // 4. Формируем правила с учетом КРИТИЧНОСТИ
+    // 4. Формируем правила с учетом критичнности
     const checks = [];
 
     // Правило: Описание (Critical)
@@ -47,7 +47,7 @@ const App = () => {
       checks.push({
         name: "Description",
         isReady: hasDesc, 
-        isCritical: true, // <-- ВАЖНОЕ ПОЛЕ
+        isCritical: true,
         msg: hasDesc ? "Заполнено" : "Критично: Нет описания"
       });
     }
@@ -57,9 +57,9 @@ const App = () => {
       checks.push({
         name: "Assignee",
         isReady: fields.assignee !== null,
-        isCritical: true, // <-- ВАЖНОЕ ПОЛЕ
+        isCritical: true, 
         msg: fields.assignee ? fields.assignee.displayName : "Критично: Не назначен",
-        canFix: true, // Флаг, что мы можем это починить кнопкой
+        canFix: true, 
         fixType: 'assignMe'
       });
     }
@@ -91,7 +91,7 @@ const App = () => {
     // Если есть хоть одна КРИТИЧЕСКАЯ ошибка
     const hasCriticalError = checks.some(c => c.isCritical && !c.isReady);
     
-    // Score считаем как и раньше, но цвет бара будем менять
+    // Score считаем как и раньше (с заменой цвета)
     const score = totalCount === 0 ? 1 : passedCount / totalCount; 
 
     setData({ checks, score, hasCriticalError });
@@ -102,7 +102,7 @@ const App = () => {
     fetchData();
   }, []);
 
-  // --- ACTIONS (Быстрые действия) ---
+  // ACTIONS (Быстрые действия)
 
   // Функция "Взять задачу на себя"
   const assignToMe = async () => {
@@ -113,7 +113,6 @@ const App = () => {
         const issueId = context.extension.issue.id;
 
         // 2. Узнаем ID текущего пользователя (кто кликнул)
-        // Для этого используем специальный endpoint 'myself'
         const meResponse = await requestJira('/rest/api/3/myself');
         const meData = await meResponse.json();
         const myAccountId = meData.accountId;
@@ -229,7 +228,7 @@ const App = () => {
         }))}
       />
 
-      {/* MODAL SETTINGS (Тот же код, что и был) */}
+      {/* MODAL SETTINGS */}
       <ModalTransition>
         {isSettingsOpen && tempSettings && (
           <Modal onClose={() => setIsSettingsOpen(false)}>
