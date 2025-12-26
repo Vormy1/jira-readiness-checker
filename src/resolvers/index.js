@@ -3,10 +3,10 @@ import { storage } from '@forge/api';
 
 const resolver = new Resolver();
 
-// Ключ, по которому будем хранить настройки
+// Ключ хранения настроеик
 const SETTINGS_KEY = 'readiness-settings';
 
-// Значения по умолчанию (если настройки еще не сохраняли)
+// Значения по умолчанию 
 const DEFAULT_SETTINGS = {
   checkDescription: true,
   checkAssignee: true,
@@ -24,7 +24,6 @@ resolver.define('getSettings', async () => {
 
 // Функция 2: Сохранить настройки
 resolver.define('saveSettings', async (req) => {
-  // req.payload — это то, что прислал фронтенд
   await storage.set(SETTINGS_KEY, req.payload);
   return req.payload;
 });
