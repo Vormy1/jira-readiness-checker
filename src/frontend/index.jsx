@@ -7,41 +7,41 @@ import ForgeReconciler, {
 import { requestJira, view, invoke } from '@forge/bridge';
 
 const App = () => {
-  // --- СОСТОЯНИЯ ---
+  // --- condition ---
   const [data, setData] = useState(null);
   const [settings, setSettings] = useState(null); 
   const [loading, setLoading] = useState(true);
   
-  // Состояния UI
+  //  UI condition
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempSettings, setTempSettings] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false); 
 
-  // --- ЛОГИКА ---
+  // --- LOGICS ---
 
   const fetchData = async () => {
     setLoading(true);
     
-    // 1. Настройки
+    // 1. Settings
     let currentSettings = settings;
     if (!currentSettings) {
        currentSettings = await invoke('getSettings');
        setSettings(currentSettings);
     }
 
-    // 2. Контекст
+    // 2. Context
     const context = await view.getContext();
     const issueId = context.extension.issue.id;
 
-    // 3. Запрос данных задачи
+    // 3. Request for issue data
     const response = await requestJira(`/rest/api/3/issue/${issueId}`);
     const issueData = await response.json();
     const fields = issueData.fields;
 
-    // 4. Формируем правила с учетом критичнности
+    // 4. Forming rules based on criticality
     const checks = [];
 
-    // Правило: Описание (Critical)
+    // ROOL: Description (Critical)
     if (currentSettings.checkDescription) {
       const hasDesc = fields.description !== null; 
       checks.push({
@@ -52,7 +52,7 @@ const App = () => {
       });
     }
 
-    // Правило: Исполнитель (Critical)
+    // Rule: Performer (Critical)
     if (currentSettings.checkAssignee) {
       checks.push({
         name: "Assignee",
@@ -64,7 +64,7 @@ const App = () => {
       });
     }
 
-    // Правило: Приоритет (Normal)
+    // The rule: Priority (Normal)
     if (currentSettings.checkPriority) {
       checks.push({
         name: "Priority",
@@ -74,7 +74,7 @@ const App = () => {
       });
     }
 
-    // Правило: Метки (Optional / Warning)
+    // Rule: Tags (Optional / Warning)
     if (currentSettings.checkLabels) {
       checks.push({
         name: "Labels",
@@ -84,14 +84,14 @@ const App = () => {
       });
     }
 
-    // 5. Умный расчет статуса
+    // 5. Smart status calculation
     const passedCount = checks.filter(c => c.isReady).length;
     const totalCount = checks.length;
     
-    // Если есть хоть одна КРИТИЧЕСКАЯ ошибка
+    // If there is even one CRITICAL error
     const hasCriticalError = checks.some(c => c.isCritical && !c.isReady);
     
-    // Score считаем как и раньше (с заменой цвета)
+    // Score is calculated as before (with color replacement)
     const score = totalCount === 0 ? 1 : passedCount / totalCount; 
 
     setData({ checks, score, hasCriticalError });
@@ -102,22 +102,22 @@ const App = () => {
     fetchData();
   }, []);
 
-  // ACTIONS (Быстрые действия)
+  // ACTIONS 
 
-  // Функция "Взять задачу на себя"
+  // "take by myself" 
   const assignToMe = async () => {
     setIsAssigning(true);
     try {
-        // 1. Узнаем ID текущего задачи
+        // 1. Find the current ID of the task
         const context = await view.getContext();
         const issueId = context.extension.issue.id;
 
-        // 2. Узнаем ID текущего пользователя (кто кликнул)
+        // 2. Find the current ID user
         const meResponse = await requestJira('/rest/api/3/myself');
         const meData = await meResponse.json();
         const myAccountId = meData.accountId;
 
-        // 3. Назначаем задачу
+        // 3. Set the task
         await requestJira(`/rest/api/3/issue/${issueId}/assignee`, {
             method: 'PUT',
             headers: {
@@ -129,7 +129,7 @@ const App = () => {
             })
         });
 
-        // 4. Обновляем данные
+        // 4.   Update data
         fetchData();
 
     } catch (error) {
@@ -157,7 +157,7 @@ const App = () => {
   return (
     <Stack space="space.200">
       
-      {/* Шапка */}
+      {/* Heading */}
       <Stack direction="row" alignInline="spread" alignBlock="center">
         <Heading as="h3">Score: {Math.round(data.score * 100)}%</Heading>
         <Stack direction="row" space="space.050">
@@ -166,20 +166,20 @@ const App = () => {
         </Stack>
       </Stack>
 
-      {/* Бар прогресса меняет цвет */}
+      {/* Progress bar (changes colour) */}
       <ProgressBar 
         value={data.score} 
         appearance={data.score === 1 ? 'success' : (data.hasCriticalError ? 'danger' : 'warning')} 
       />
 
-      {/* Сообщение, если всё плохо */}
+      {/* Message (critical errors appears*/}
       {data.hasCriticalError && (
           <SectionMessage appearance="error" title="Задача не готова">
               <Text>Исправьте критические ошибки перед началом работы.</Text>
           </SectionMessage>
       )}
 
-      {/* Таблица */}
+      {/* Table */}
       <DynamicTable
         head={{
           cells: [
