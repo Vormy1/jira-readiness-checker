@@ -3,10 +3,10 @@ import { storage } from '@forge/api';
 
 const resolver = new Resolver();
 
-// Ключ хранения настроеик
+// The storage key is configured
 const SETTINGS_KEY = 'readiness-settings';
 
-// Значения по умолчанию 
+// Default values
 const DEFAULT_SETTINGS = {
   checkDescription: true,
   checkAssignee: true,
@@ -14,15 +14,15 @@ const DEFAULT_SETTINGS = {
   checkLabels: true
 };
 
-// Функция 1: Получить настройки
+// Function 1: Get Settings
 resolver.define('getSettings', async () => {
-  // Достать из базы
+  // Get it from the database
   const stored = await storage.get(SETTINGS_KEY);
-  // Если в базе нет то дефолтные
+  // If there are no default values in the database
   return stored || DEFAULT_SETTINGS;
 });
 
-// Функция 2: Сохранить настройки
+// Function 2: Save settings
 resolver.define('saveSettings', async (req) => {
   await storage.set(SETTINGS_KEY, req.payload);
   return req.payload;
