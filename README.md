@@ -20,7 +20,19 @@
 *   **Backend:** Forge Resolvers
 *   **Permissions:** OAuth 2.0 scopes (`read:jira-work`, `write:jira-work`, `storage:app`)
 
-## Скриншоты
+### 1. Critical State & Quick Actions 
+*Плагин обнаружил критические ошибки (нет исполнителя). Видна кнопка быстрого исправления "Взять себе".*
+![alt text](image-2.png)
+
+
+### 2. Ready State 
+*Все правила соблюдены (Priority, Labels, Assignee). Задача готова к работе.*
+![alt text](<Screenshot 2025-12-26 212046.png>)
+
+
+### 3. Settings Configuration 
+*Гибкая настройка правил. Можно отключать проверки (например, Labels), и Warning пропадет.*
+![alt text](image-3.png)
 
 
 ## Установка и запуск
