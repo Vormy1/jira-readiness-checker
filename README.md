@@ -27,7 +27,7 @@
 
 ### 2. Ready State 
 *Все правила соблюдены (Priority, Labels, Assignee). Задача готова к работе.*
-![alt text](<Screenshot 2025-12-26 212046.png>)
+![alt text](image-1.png)
 
 
 ### 3. Settings Configuration 
