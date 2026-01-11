@@ -7,41 +7,41 @@ import ForgeReconciler, {
 import { requestJira, view, invoke } from '@forge/bridge';
 
 const App = () => {
-  // --- condition ---
+  // --- СОСТОЯНИЯ ---
   const [data, setData] = useState(null);
   const [settings, setSettings] = useState(null); 
   const [loading, setLoading] = useState(true);
   
-  //  UI condition
+  // Состояния UI
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempSettings, setTempSettings] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false); 
 
-  // --- LOGICS ---
+  // --- ЛОГИКА ---
 
   const fetchData = async () => {
     setLoading(true);
     
-    // 1. Settings
+    // 1. Настройки
     let currentSettings = settings;
     if (!currentSettings) {
        currentSettings = await invoke('getSettings');
        setSettings(currentSettings);
     }
 
-    // 2. Context
+    // 2. Контекст
     const context = await view.getContext();
     const issueId = context.extension.issue.id;
 
-    // 3. Request for issue data
+    // 3. Запрос данных задачи
     const response = await requestJira(`/rest/api/3/issue/${issueId}`);
     const issueData = await response.json();
     const fields = issueData.fields;
 
-    // 4. Forming rules based on criticality
+    // 4. Формируем правила с учетом критичнности
     const checks = [];
 
-    // ROOL: Description (Critical)
+    // Правило: Описание (Critical)
     if (currentSettings.checkDescription) {
       const hasDesc = fields.description !== null; 
       checks.push({
@@ -52,7 +52,7 @@ const App = () => {
       });
     }
 
-    // Rule: Performer (Critical)
+    // Правило: Исполнитель (Critical)
     if (currentSettings.checkAssignee) {
       checks.push({
         name: "Assignee",
@@ -64,7 +64,7 @@ const App = () => {
       });
     }
 
-    // The rule: Priority (Normal)
+    // Правило: Приоритет (Normal)
     if (currentSettings.checkPriority) {
       checks.push({
         name: "Priority",
@@ -74,7 +74,7 @@ const App = () => {
       });
     }
 
-    // Rule: Tags (Optional / Warning)
+    // Правило: Метки (Optional / Warning)
     if (currentSettings.checkLabels) {
       checks.push({
         name: "Labels",
@@ -84,14 +84,14 @@ const App = () => {
       });
     }
 
-    // 5. Smart status calculation
+    // 5. Умный расчет статуса
     const passedCount = checks.filter(c => c.isReady).length;
     const totalCount = checks.length;
     
-    // If there is even one CRITICAL error
+    // Если есть хоть одна КРИТИЧЕСКАЯ ошибка
     const hasCriticalError = checks.some(c => c.isCritical && !c.isReady);
     
-    // Score is calculated as before (with color replacement)
+    // Score считаем как и раньше (с заменой цвета)
     const score = totalCount === 0 ? 1 : passedCount / totalCount; 
 
     setData({ checks, score, hasCriticalError });
@@ -102,22 +102,22 @@ const App = () => {
     fetchData();
   }, []);
 
-  // ACTIONS 
+  // ACTIONS (Быстрые действия)
 
-  // "take by myself" 
+  // Функция "Взять задачу на себя"
   const assignToMe = async () => {
     setIsAssigning(true);
     try {
-        // 1. Find the current ID of the task
+        // 1. Узнаем ID текущего задачи
         const context = await view.getContext();
         const issueId = context.extension.issue.id;
 
-        // 2. Find the current ID user
+        // 2. Узнаем ID текущего пользователя (кто кликнул)
         const meResponse = await requestJira('/rest/api/3/myself');
         const meData = await meResponse.json();
         const myAccountId = meData.accountId;
 
-        // 3. Set the task
+        // 3. Назначаем задачу
         await requestJira(`/rest/api/3/issue/${issueId}/assignee`, {
             method: 'PUT',
             headers: {
@@ -129,7 +129,7 @@ const App = () => {
             })
         });
 
-        // 4.   Update data
+        // 4. Обновляем данные
         fetchData();
 
     } catch (error) {
@@ -139,7 +139,7 @@ const App = () => {
     }
   };
 
-  // --- SETTINGS LOGIC ---
+  // --- Логика настроек ---
   const openSettingsModal = () => { setTempSettings({ ...settings }); setIsSettingsOpen(true); };
   const toggleSetting = (key) => setTempSettings(prev => ({ ...prev, [key]: !prev[key] }));
   const saveSettings = async () => {
@@ -153,11 +153,11 @@ const App = () => {
     return <Text>Loading...</Text>;
   }
 
-  // --- UI RENDER ---
+  // --- UI рендер ---
   return (
     <Stack space="space.200">
       
-      {/* Heading */}
+      {/* Шапка */}
       <Stack direction="row" alignInline="spread" alignBlock="center">
         <Heading as="h3">Score: {Math.round(data.score * 100)}%</Heading>
         <Stack direction="row" space="space.050">
@@ -166,20 +166,20 @@ const App = () => {
         </Stack>
       </Stack>
 
-      {/* Progress bar (changes colour) */}
+      {/* Бар прогресса меняет цвет */}
       <ProgressBar 
         value={data.score} 
         appearance={data.score === 1 ? 'success' : (data.hasCriticalError ? 'danger' : 'warning')} 
       />
 
-      {/* Message (critical errors appears*/}
+      {/* Сообщение, если всё плохо */}
       {data.hasCriticalError && (
           <SectionMessage appearance="error" title="Задача не готова">
               <Text>Исправьте критические ошибки перед началом работы.</Text>
           </SectionMessage>
       )}
 
-      {/* Table */}
+      {/* Таблица */}
       <DynamicTable
         head={{
           cells: [
@@ -228,7 +228,7 @@ const App = () => {
         }))}
       />
 
-      {/* MODAL SETTINGS */}
+      {/* MODAL ностройки */}
       <ModalTransition>
         {isSettingsOpen && tempSettings && (
           <Modal onClose={() => setIsSettingsOpen(false)}>
