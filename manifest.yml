@@ -30,4 +30,4 @@ permissions:
   external:
     fetch:
       backend:
-        - api.openai.com
+        - 'api.openai.com'

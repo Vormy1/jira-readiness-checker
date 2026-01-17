@@ -145,11 +145,10 @@ const App = () => {
     window.location.reload(); 
   };
 
-  // Helper для получения цвета точки AI
   const getAiScoreDot = (score) => {
-    if (score >= 80) return "🟢"; // Green
-    if (score >= 50) return "🟡"; // Yellow
-    return "🔴"; // Red
+    if (score >= 80) return "🟢";
+    if (score >= 50) return "🟡";
+    return "🔴";
   };
 
   if (loading || !settings) {
@@ -203,9 +202,7 @@ const App = () => {
       <Box padding="space.200" backgroundColor="color.background.neutral.subtle" borderRadius="border.radius">
           <Stack space="space.200">
               
-            {/* ЗАГОЛОВОК + ОЦЕНКА В ОДНУ СТРОКУ */}
               <Stack direction="row" alignInline="spread" alignBlock="center">
-                  {/* ВАЖНО: Всё внутри одного Text, чтобы не было переноса строки */}
                   <Text>
                      <Strong>🧠 AI Check</Strong>
                      {aiResult && !aiResult.error && (
@@ -213,20 +210,16 @@ const App = () => {
                      )}
                   </Text>
                   
-                  {/* КНОПКА СПРАВА */}
                   <Button onClick={runAiAnalysis} appearance="primary" isLoading={aiLoading}>
                       {aiResult ? "Re-analyze" : "✨ Analyze with AI"}
                   </Button>
               </Stack>
 
-              {/* РЕЗУЛЬТАТЫ АНАЛИЗА */}
               {aiResult && !aiResult.error && (
                   <Stack space="space.300">
                       
-                      {/* Анализ (Текст) */}
                       <Text>{aiResult.analysis}</Text>
 
-                      {/* Чего не хватает */}
                       {aiResult.missing && aiResult.missing.length > 0 && (
                           <SectionMessage title="Recommendations" appearance="warning">
                               <Stack space="space.050">
@@ -237,7 +230,6 @@ const App = () => {
                           </SectionMessage>
                       )}
 
-                      {/* Вопросы */}
                       {aiResult.questions && aiResult.questions.length > 0 && (
                           <SectionMessage title="Questions to Reporter" appearance="information">
                               <Stack space="space.050">
@@ -250,7 +242,6 @@ const App = () => {
                   </Stack>
               )}
 
-              {/* ОШИБКА */}
               {aiResult && aiResult.error && (
                   <SectionMessage appearance="error" title="AI Error">
                       <Text>{aiResult.error}</Text>
