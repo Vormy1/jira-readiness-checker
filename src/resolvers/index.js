@@ -1,12 +1,8 @@
 import Resolver from '@forge/resolver';
-import { storage } from '@forge/api';
+import { storage, fetch } from '@forge/api';
 
 const resolver = new Resolver();
-
-// Ключ хранения настроеик
 const SETTINGS_KEY = 'readiness-settings';
-
-// Значения по умолчанию 
 const DEFAULT_SETTINGS = {
   checkDescription: true,
   checkAssignee: true,
@@ -14,18 +10,107 @@ const DEFAULT_SETTINGS = {
   checkLabels: true
 };
 
-// Функция 1: Получить настройки
 resolver.define('getSettings', async () => {
-  // Достать из базы
   const stored = await storage.get(SETTINGS_KEY);
-  // Если в базе нет то дефолтные
   return stored || DEFAULT_SETTINGS;
 });
 
-// Функция 2: Сохранить настройки
 resolver.define('saveSettings', async (req) => {
   await storage.set(SETTINGS_KEY, req.payload);
   return req.payload;
+});
+
+// --- ФУНКЦИЯ АНАЛИЗА ---
+resolver.define('analyzeIssue', async (req) => {
+  let { summary, description, type } = req.payload;
+
+  // 1. БЕЗОПАСНАЯ ОБРАБОТКА ОПИСАНИЯ
+  // Если описания нет вообще
+  if (!description) {
+     return {
+         score: 0,
+         analysis: "Описание отсутствует.",
+         missing: ["Полное описание задачи"],
+         questions: ["О чем эта задача?"]
+     };
+  }
+
+  // Если описание пришло как ОБЪЕКТ (Jira ADF), превращаем его в строку JSON
+  if (typeof description === 'object') {
+      description = JSON.stringify(description);
+  }
+
+  // Теперь это точно строка. Проверяем, не пустая ли она.
+  if (typeof description === 'string' && description.trim().length === 0) {
+      return {
+         score: 0,
+         analysis: "Описание пустое.",
+         missing: ["Описание задачи"],
+         questions: ["Заполните детали задачи"]
+     };
+  }
+
+  // 2. ПРОВЕРКА API КЛЮЧА
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+      console.error("API Key is missing in Forge Variables");
+      return { error: "API Key не найден. Введите команду: forge variables set OPENAI_API_KEY ..." };
+  }
+
+  // 3. ФОРМИРУЕМ ПРОМПТ
+  const prompt = `
+    Ты опытный QA Lead. Проанализируй эту задачу Jira.
+    
+    Тип: ${type}
+    Заголовок: ${summary}
+    Описание (может быть в формате JSON): ${description}
+
+    Твоя цель:
+    1. Оцени понятность описания от 0 до 100.
+    2. Если < 100, напиши список, чего не хватает.
+    3. Задай 3 вопроса автору.
+    
+    Верни ТОЛЬКО JSON:
+    {
+       "score": number,
+       "analysis": "короткий вывод",
+       "missing": ["пункт 1", "пункт 2"],
+       "questions": ["вопрос 1", "вопрос 2"]
+    }
+  `;
+
+  // 4. ЗАПРОС К OPENAI
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+        model: "gpt-4o-mini", // Или gpt-3.5-turbo
+        messages: [
+            { role: "system", content: "You represent a JSON structure." },
+            { role: "user", content: prompt }
+        ],
+        temperature: 0.3
+        })
+    });
+
+    if (response.status !== 200) {
+        throw new Error(`OpenAI API Error: Status ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    const content = data.choices[0].message.content;
+    const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson);
+
+  } catch (error) {
+      console.error("AI Request Failed:", error);
+      return { error: "Ошибка при запросе к ИИ. См. логи." };
+  }
 });
 
 export const handler = resolver.getDefinitions();

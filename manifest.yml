@@ -10,9 +10,11 @@ modules:
   function:
     - key: resolver
       handler: index.handler
+
 resources:
   - key: main
     path: src/frontend/index.jsx
+
 app:
   runtime:
     name: nodejs24.x
@@ -25,3 +27,7 @@ permissions:
     - write:jira-work
     - storage:app
     - read:me
+  external:
+    fetch:
+      backend:
+        - api.openai.com

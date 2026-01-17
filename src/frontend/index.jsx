@@ -2,46 +2,50 @@ import React, { useEffect, useState } from 'react';
 import ForgeReconciler, { 
   Text, Stack, Heading, ProgressBar, Strong, 
   Button, Modal, ModalBody, ModalHeader, ModalFooter, ModalTitle, 
-  Checkbox, ModalTransition, Lozenge, DynamicTable, Icon, SectionMessage 
+  Checkbox, ModalTransition, Lozenge, DynamicTable, Icon, SectionMessage, Box, Badge
 } from '@forge/react';
 import { requestJira, view, invoke } from '@forge/bridge';
 
 const App = () => {
-  // --- condition ---
+  // --- STATE ---
   const [data, setData] = useState(null);
   const [settings, setSettings] = useState(null); 
   const [loading, setLoading] = useState(true);
   
-  //  UI condition
+  // UI States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempSettings, setTempSettings] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false); 
 
-  // --- LOGICS ---
+  // AI States
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
+
+  // --- LOGIC ---
 
   const fetchData = async () => {
     setLoading(true);
-    
-    // 1. Settings
     let currentSettings = settings;
     if (!currentSettings) {
        currentSettings = await invoke('getSettings');
        setSettings(currentSettings);
     }
 
-    // 2. Context
     const context = await view.getContext();
     const issueId = context.extension.issue.id;
 
-    // 3. Request for issue data
     const response = await requestJira(`/rest/api/3/issue/${issueId}`);
     const issueData = await response.json();
     const fields = issueData.fields;
 
-    // 4. Forming rules based on criticality
+    const aiContext = {
+        summary: fields.summary,
+        description: fields.description, 
+        type: fields.issuetype.name
+    };
+
     const checks = [];
 
-    // ROOL: Description (Critical)
     if (currentSettings.checkDescription) {
       const hasDesc = fields.description !== null; 
       checks.push({
@@ -52,7 +56,6 @@ const App = () => {
       });
     }
 
-    // Rule: Performer (Critical)
     if (currentSettings.checkAssignee) {
       checks.push({
         name: "Assignee",
@@ -64,7 +67,6 @@ const App = () => {
       });
     }
 
-    // The rule: Priority (Normal)
     if (currentSettings.checkPriority) {
       checks.push({
         name: "Priority",
@@ -74,7 +76,6 @@ const App = () => {
       });
     }
 
-    // Rule: Tags (Optional / Warning)
     if (currentSettings.checkLabels) {
       checks.push({
         name: "Labels",
@@ -84,17 +85,12 @@ const App = () => {
       });
     }
 
-    // 5. Smart status calculation
     const passedCount = checks.filter(c => c.isReady).length;
     const totalCount = checks.length;
-    
-    // If there is even one CRITICAL error
     const hasCriticalError = checks.some(c => c.isCritical && !c.isReady);
-    
-    // Score is calculated as before (with color replacement)
     const score = totalCount === 0 ? 1 : passedCount / totalCount; 
 
-    setData({ checks, score, hasCriticalError });
+    setData({ checks, score, hasCriticalError, aiContext });
     setLoading(false);
   };
 
@@ -102,44 +98,44 @@ const App = () => {
     fetchData();
   }, []);
 
-  // ACTIONS 
+  // --- AI FUNCTION ---
+  const runAiAnalysis = async () => {
+      setAiLoading(true);
+      setAiResult(null); 
+      try {
+          const result = await invoke('analyzeIssue', {
+              summary: data.aiContext.summary,
+              description: data.aiContext.description,
+              type: data.aiContext.type
+          });
+          setAiResult(result);
+      } catch (error) {
+          console.error(error);
+          setAiResult({ error: "Ошибка соединения с AI. Проверьте API Key." });
+      } finally {
+          setAiLoading(false);
+      }
+  };
 
-  // "take by myself" 
+  // --- ACTIONS ---
   const assignToMe = async () => {
     setIsAssigning(true);
     try {
-        // 1. Find the current ID of the task
         const context = await view.getContext();
         const issueId = context.extension.issue.id;
-
-        // 2. Find the current ID user
         const meResponse = await requestJira('/rest/api/3/myself');
         const meData = await meResponse.json();
-        const myAccountId = meData.accountId;
-
-        // 3. Set the task
+        
         await requestJira(`/rest/api/3/issue/${issueId}/assignee`, {
             method: 'PUT',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                accountId: myAccountId
-            })
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountId: meData.accountId })
         });
-
-        // 4.   Update data
         fetchData();
-
-    } catch (error) {
-        console.error("Ошибка назначения", error);
-    } finally {
-        setIsAssigning(false);
-    }
+    } catch (error) { console.error(error); } finally { setIsAssigning(false); }
   };
 
-  // --- SETTINGS LOGIC ---
+  // --- SETTINGS ---
   const openSettingsModal = () => { setTempSettings({ ...settings }); setIsSettingsOpen(true); };
   const toggleSetting = (key) => setTempSettings(prev => ({ ...prev, [key]: !prev[key] }));
   const saveSettings = async () => {
@@ -149,106 +145,140 @@ const App = () => {
     window.location.reload(); 
   };
 
+  // Helper для получения цвета точки AI
+  const getAiScoreDot = (score) => {
+    if (score >= 80) return "🟢"; // Green
+    if (score >= 50) return "🟡"; // Yellow
+    return "🔴"; // Red
+  };
+
   if (loading || !settings) {
     return <Text>Loading...</Text>;
   }
 
   // --- UI RENDER ---
   return (
-    <Stack space="space.200">
+    <Stack space="space.300">
       
-      {/* Heading */}
+      {/* 1. MAIN SCORE HEADER */}
       <Stack direction="row" alignInline="spread" alignBlock="center">
-        <Heading as="h3">Score: {Math.round(data.score * 100)}%</Heading>
+        <Heading as="h3">Technical Score: {Math.round(data.score * 100)}%</Heading>
         <Stack direction="row" space="space.050">
             <Button appearance="subtle" onClick={fetchData}><Icon glyph="refresh" label="Refresh" /></Button>
             <Button appearance="subtle" onClick={openSettingsModal}><Icon glyph="settings" label="Settings" /></Button>
         </Stack>
       </Stack>
 
-      {/* Progress bar (changes colour) */}
       <ProgressBar 
         value={data.score} 
         appearance={data.score === 1 ? 'success' : (data.hasCriticalError ? 'danger' : 'warning')} 
       />
 
-      {/* Message (critical errors appears*/}
       {data.hasCriticalError && (
-          <SectionMessage appearance="error" title="Задача не готова">
-              <Text>Исправьте критические ошибки перед началом работы.</Text>
+          <SectionMessage appearance="error" title="Technical Blocker">
+              <Text>Fix critical fields (Assignee/Description) first.</Text>
           </SectionMessage>
       )}
 
-      {/* Table */}
+      {/* 2. RULES TABLE */}
       <DynamicTable
         head={{
-          cells: [
-            { key: 'status', content: 'Status', isSortable: false },
-            { key: 'rule', content: 'Rule', isSortable: false },
-            { key: 'details', content: 'Details / Action', isSortable: false },
-          ],
+            cells: [
+                { key: 's', content: 'Status', isSortable: false },
+                { key: 'r', content: 'Rule', isSortable: false },
+                { key: 'd', content: 'Details', isSortable: false },
+            ]
         }}
         rows={data.checks.map((check, index) => ({
           key: `row-${index}`,
           cells: [
-            {
-              key: 'status',
-              content: (
-                <Lozenge appearance={
-                    check.isReady ? 'success' : (check.isCritical ? 'removed' : 'inprogress')
-                }>
-                  {check.isReady ? 'OK' : (check.isCritical ? 'CRITICAL' : 'WARNING')}
-                </Lozenge>
-              ),
-            },
-            {
-              key: 'rule',
-              content: <Strong>{check.name}</Strong>,
-            },
-            {
-              key: 'details',
-              content: (
-                 <Stack direction="row" alignBlock="center" space="space.100">
-                    <Text>{check.msg}</Text>
-                    {/* Кнопка "Assign Me", если это Assignee и он пустой */}
-                    {!check.isReady && check.canFix && check.fixType === 'assignMe' && (
-                        <Button 
-                            appearance="primary" 
-                            spacing="compact" 
-                            isLoading={isAssigning}
-                            onClick={assignToMe}
-                        >
-                            Взять себе
-                        </Button>
-                    )}
-                 </Stack>
-              ),
-            },
+            { key: 's', content: <Lozenge appearance={check.isReady ? 'success' : (check.isCritical ? 'removed' : 'inprogress')}>{check.isReady ? 'OK' : 'FIX'}</Lozenge> },
+            { key: 'r', content: <Strong>{check.name}</Strong> },
+            { key: 'd', content: <Stack direction="row" alignBlock="center" space="space.100"><Text>{check.msg}</Text>{!check.isReady && check.canFix && (<Button appearance="primary" spacing="compact" isLoading={isAssigning} onClick={assignToMe}>Взять себе</Button>)}</Stack> },
           ],
         }))}
       />
 
-      {/* MODAL SETTINGS */}
+      {/* 3. ✨ AI ANALYSIS SECTION ✨ */}
+      <Box padding="space.200" backgroundColor="color.background.neutral.subtle" borderRadius="border.radius">
+          <Stack space="space.200">
+              
+            {/* ЗАГОЛОВОК + ОЦЕНКА В ОДНУ СТРОКУ */}
+              <Stack direction="row" alignInline="spread" alignBlock="center">
+                  {/* ВАЖНО: Всё внутри одного Text, чтобы не было переноса строки */}
+                  <Text>
+                     <Strong>🧠 AI Check</Strong>
+                     {aiResult && !aiResult.error && (
+                         <Text> &nbsp; {getAiScoreDot(aiResult.score)} {aiResult.score}%</Text>
+                     )}
+                  </Text>
+                  
+                  {/* КНОПКА СПРАВА */}
+                  <Button onClick={runAiAnalysis} appearance="primary" isLoading={aiLoading}>
+                      {aiResult ? "Re-analyze" : "✨ Analyze with AI"}
+                  </Button>
+              </Stack>
+
+              {/* РЕЗУЛЬТАТЫ АНАЛИЗА */}
+              {aiResult && !aiResult.error && (
+                  <Stack space="space.300">
+                      
+                      {/* Анализ (Текст) */}
+                      <Text>{aiResult.analysis}</Text>
+
+                      {/* Чего не хватает */}
+                      {aiResult.missing && aiResult.missing.length > 0 && (
+                          <SectionMessage title="Recommendations" appearance="warning">
+                              <Stack space="space.050">
+                                  {aiResult.missing.map((item, i) => (
+                                      <Text key={i}>• {item}</Text>
+                                  ))}
+                              </Stack>
+                          </SectionMessage>
+                      )}
+
+                      {/* Вопросы */}
+                      {aiResult.questions && aiResult.questions.length > 0 && (
+                          <SectionMessage title="Questions to Reporter" appearance="information">
+                              <Stack space="space.050">
+                                  {aiResult.questions.map((q, i) => (
+                                      <Text key={i}>? {q}</Text>
+                                  ))}
+                              </Stack>
+                          </SectionMessage>
+                      )}
+                  </Stack>
+              )}
+
+              {/* ОШИБКА */}
+              {aiResult && aiResult.error && (
+                  <SectionMessage appearance="error" title="AI Error">
+                      <Text>{aiResult.error}</Text>
+                  </SectionMessage>
+              )}
+          </Stack>
+      </Box>
+
+      {/* SETTINGS MODAL */}
       <ModalTransition>
         {isSettingsOpen && tempSettings && (
           <Modal onClose={() => setIsSettingsOpen(false)}>
-              <ModalHeader><ModalTitle>Настройки</ModalTitle></ModalHeader>
+              <ModalHeader><ModalTitle>Settings</ModalTitle></ModalHeader>
               <ModalBody>
                 <Stack space="space.100">
-                    <Checkbox isChecked={tempSettings.checkDescription} onChange={() => toggleSetting('checkDescription')} label="Требовать Описание" />
-                    <Checkbox isChecked={tempSettings.checkAssignee} onChange={() => toggleSetting('checkAssignee')} label="Требовать Исполнителя" />
-                    <Checkbox isChecked={tempSettings.checkPriority} onChange={() => toggleSetting('checkPriority')} label="Требовать Приоритет" />
-                    <Checkbox isChecked={tempSettings.checkLabels} onChange={() => toggleSetting('checkLabels')} label="Требовать Метки" />
+                    <Checkbox isChecked={tempSettings.checkDescription} onChange={() => toggleSetting('checkDescription')} label="Check Description" />
+                    <Checkbox isChecked={tempSettings.checkAssignee} onChange={() => toggleSetting('checkAssignee')} label="Check Assignee" />
+                    <Checkbox isChecked={tempSettings.checkPriority} onChange={() => toggleSetting('checkPriority')} label="Check Priority" />
+                    <Checkbox isChecked={tempSettings.checkLabels} onChange={() => toggleSetting('checkLabels')} label="Check Labels" />
                 </Stack>
               </ModalBody>
               <ModalFooter>
-                <Button appearance="subtle" onClick={() => setIsSettingsOpen(false)}>Отмена</Button>
-                <Button appearance="primary" onClick={saveSettings}>Сохранить</Button>
+                  <Button appearance="subtle" onClick={() => setIsSettingsOpen(false)}>Cancel</Button>
+                  <Button appearance="primary" onClick={saveSettings}>Save</Button>
               </ModalFooter>
           </Modal>
         )}
       </ModalTransition>
-
     </Stack>
   );
 };
