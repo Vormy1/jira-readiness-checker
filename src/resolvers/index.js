@@ -30,7 +30,7 @@ resolver.define('analyzeIssue', async (req) => {
          missing: ["Полное описание задачи"],
          questions: ["О чем эта задача?"]
      };
-  }
+  }   
 
   if (typeof description === 'object') {
       description = JSON.stringify(description);

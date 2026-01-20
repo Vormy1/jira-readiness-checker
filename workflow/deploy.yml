@@ -1,0 +1,40 @@
+name: Deploy to Atlassian Forge
+
+# Когда запускать: при пуше в ветку main
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+    
+    steps:
+      # 1. Скачиваем твой код
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Устанавливаем Node.js (как на твоем компе)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # 3. Устанавливаем Forge CLI
+      - name: Install Forge CLI
+        run: npm install -g @forge/cli
+
+      # 4. Логинимся в Atlassian (используя спрятанные секреты)
+      - name: Login to Forge
+        run: |
+          forge settings set usage-analytics false
+          forge login --email ${{ secrets.ATLASSIAN_EMAIL }} --token ${{ secrets.ATLASSIAN_API_TOKEN }} --non-interactive
+
+      # 5. Устанавливаем зависимости проекта
+      - name: Install Dependencies
+        run: npm install
+
+      # 6. Делаем Деплой в среду Development
+      - name: Deploy to Development
+        run: forge deploy --environment development
